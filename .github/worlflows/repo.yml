@@ -1,0 +1,47 @@
+name: Generate F-Droid Repo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  build-fdroid-repo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fdroidserver
+
+      - name: Prepare F-Droid repo
+        run: |
+          mkdir -p fdroid
+          cd fdroid
+          fdroid init
+          # copy your APKs into the repo folder
+          cp ../your-apks/*.apk ./repo/
+          fdroid update --create-metadata --pretty
+
+      - name: Upload repo as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fdroid-repo
+          path: fdroid/
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./fdroid
