@@ -22,15 +22,24 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y fdroidserver
+          sudo apt-get install -y fdroidserver jq
+
+      - name: Download latest release APK
+        id: download_apk
+        run: |
+          release_url="https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest"
+          assets=$(curl -s $release_url | jq -r '.assets[] | select(.name | endswith(".apk")) | .browser_download_url')
+          mkdir -p temp-apk
+          for url in $assets; do
+            wget -O "temp-apk/$(basename $url)" "$url"
+          done
 
       - name: Prepare F-Droid repo
         run: |
           mkdir -p fdroid
           cd fdroid
           fdroid init
-          # copy your APKs into the repo folder
-          cp ../your-apks/*.apk ./repo/
+          cp ../temp-apk/*.apk ./repo/
           fdroid update --create-metadata --pretty
 
       - name: Upload repo as artifact
